@@ -1,0 +1,93 @@
+version: '3.8'
+
+networks:
+  dev-network:
+    driver: bridge
+
+services:
+  postgres:
+    image: postgres:latest
+    restart: always
+    shm_size: 128mb
+    networks:
+      - dev-network
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USERNAME=${POSTGRES_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DATABASE=${POSTGRES_DATABASE}
+    volumes:
+      - ${VOLUMES_DIR}/postgresql/data:/var/lib/postgresql/data
+      - ${SCRIPTS_DIR}/postgresql:/docker-entrypoint-initdb.d:ro
+
+  mongo:
+    image: mongo:latest
+    restart: always
+    networks:
+      - dev-network
+    ports:
+      - 27017:27017
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_DATABASE}
+    volumes:
+      - ${VOLUMES_DIR}/mongo/mongodb/data:/bitnami/mongodb
+      - ${SCRIPTS_DIR}/mongo:/docker-entrypoint-initdb.d:ro
+
+#  mongo-express:
+#    image: mongo-express:
+#    restart: always
+#    depends_on:
+#      - dev-mongo
+#    networks:
+#      - dev-network
+#    ports:
+#      - ${MONGOEXPRESS_PORT}:8081
+#    environment:
+#      - ME_CONFIG_BASICAUTH=false
+#      - ME_CONFIG_MONGODB_ENABLE_ADMIN=true
+#      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_USERNAME}
+#      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_PASSWORD}
+#      - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@dev-mongo:${MONGO_PORT}/${MONGO_DATABASE}?authSource=admin&ssl=false&directConnection=true
+
+  redis:
+    image: redis:alpine
+    networks:
+      - dev-network
+    ports:
+      - 6379:6379
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    volumes:
+      - ${VOLUMES_DIR}/redis:/data
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    depends_on:
+      - dev-redis
+    networks:
+      - dev-network
+    ports:
+      - ${REDIS_COMMANDER_PORT}:8081
+    environment:
+      - REDIS_HOST=dev-redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+
+  kafka:
+    image: lensesio/fast-data-dev
+    restart: always
+    networks:
+      - dev-network
+    ports:
+      - ${KAFKA_UI_PORT}:3030
+      - 2181:2181
+      - 8081-8083:8081-8083
+      - 9581-9585:9581-9585
+      - 9092:9092
+    environment:
+      - ADV_HOST=127.0.0.1
+      - RUNNING_SAMPLEDATA=0
+      - TZ=Europe/Moscow
